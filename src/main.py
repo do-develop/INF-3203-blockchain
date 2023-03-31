@@ -27,9 +27,11 @@ import json
 from datetime import datetime
 from requests.packages.urllib3.exceptions import InsecureRequestWarning # type:ignore
 from abstractions.user import User
+from abstractions.transaction import Transaction
+from backbone.consensus import *
 from utils.flask_utils import flask_call
 from abstractions.block import Blockchain
-from server import BLOCK_PROPOSAL, REQUEST_DIFFICULTY, GET_BLOCKCHAIN, GET_USERS, REQUEST_TXS
+from server import BLOCK_PROPOSAL, REQUEST_DIFFICULTY, GET_BLOCKCHAIN, GET_USERS, REQUEST_TXS, ADDRESS, PORT
 from utils.view import visualize_blockchain, visualize_blockchain_terminal
 
 def main(argv):
@@ -43,8 +45,13 @@ def main(argv):
                 valid_args = True
                 break
             if opt == "-m":  # mine block
-                response, _, _ = flask_call('POST', BLOCK_PROPOSAL, data=None)
-                print(response)
+                # response, _, _ = flask_call('POST', BLOCK_PROPOSAL, data=None)
+                mined_block = mine_block()
+                block_serialized = mined_block.to_dict()
+                msg, data, code = flask_call('POST', BLOCK_PROPOSAL, data=block_serialized)
+                
+                print(msg)
+                print(data)
                 valid_args = True
             if opt == "-i":
                 # INFO
@@ -56,28 +63,28 @@ def main(argv):
                     print(response)
                     valid_args = True
                 elif arg == "u":
-                    response, users, code = flask_call('GET', GET_USERS)
-                    #print(response)
-                    for user in users:
-                        u = User.load_json(json.dumps(user))
-                        if u.username == 'do-develop':
-                            print(u.mined_blocks)
+                    response, _ , _ = flask_call('GET', GET_USERS)
+                    print(response)
+                    # for user in users:
+                    #     u = User.load_json(json.dumps(user))
+                    #     if u.username == 'do-develop':
+                    #         print(u.mined_blocks)
                     valid_args = True
                 else:
                     valid_args = False
             if opt == "-t":
                 response, txs, _ = flask_call('GET', REQUEST_TXS)
                 print(response)
-                # for tx in txs:
-                #     print("inside the loop")
-                #     print(tx)
+                for tx in txs:
+                    t = Transaction.load_json(json.dumps(tx))
+                    print(t)
                 valid_args = True
             if opt == "-v":
                 if arg == "b":
                     # fetch blockchain from server
                     # get blockchain info
                     _, blockchain, code = flask_call('GET', GET_BLOCKCHAIN)
-                    if blockchain:
+                    if blockchain and code == 200:
                         b_chain = Blockchain.load_json(json.dumps(blockchain))
                         # saves the blockchain as pdf in "vis/blockchain/blockchain.pdf"
                         visualize_blockchain(b_chain.block_list, n_blocks=40)

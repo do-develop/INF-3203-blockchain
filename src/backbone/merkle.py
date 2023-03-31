@@ -8,9 +8,9 @@ from typing import List
 import requests 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning # type:ignore
 class Node:
-    def  __init__(self, hash):
-        self.left = None
-        self.right = None
+    def  __init__(self, hash, left=None, right=None):
+        self.left = left
+        self.right = right
         self.hash = hash
         # self.hash = cryptographic.hash_function(data)
     
@@ -19,7 +19,7 @@ class MerkleTree:
         self.data = None
         self.leaf_nodes = []
         for tx in txs:
-            self.leaf_nodes.append(Node(tx))
+            self.leaf_nodes.append(Node(hash_function(tx.hash)))
         self.root = None
         self.build_tree()
 
@@ -32,9 +32,7 @@ class MerkleTree:
                 left = tree[i]
                 right = tree[i + 1] if i + 1 < len(tree) else tree[i]
                 parent_hash = hash_function(left.hash + right.hash)
-                parent = Node(parent_hash)
-                parent.left = left
-                parent.right = right
+                parent = Node(parent_hash, left, right)
                 parents.append(parent)
             tree = parents 
         self.root = tree[0]
@@ -55,6 +53,9 @@ class MerkleTree:
         self.__print_tree_recursive(node.left)
         self.__print_tree_recursive(node.right)
 
+#############################################################################
+# UNIT TEST #
+#############################################################################
 if __name__ == "__main__":
     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
     _, txs, code = flask_call('GET', 'request_txs')
@@ -62,5 +63,7 @@ if __name__ == "__main__":
         hashes = [tx['hash'] for tx in txs]
         mt = MerkleTree(hashes)
         print(mt.get_root())
+
+    
 
     

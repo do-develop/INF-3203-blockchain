@@ -98,7 +98,7 @@ class Block:
         """
         hashes = []
         for t in self.transactions:
-            hashes.append(t.hash)
+            hashes.append(t)
         m = MerkleTree(hashes)
         return m
 
