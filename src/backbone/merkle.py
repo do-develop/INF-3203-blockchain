@@ -38,7 +38,7 @@ class MerkleTree:
         self.root = tree[0]
 
     def get_root(self):
-        return self.root.hash
+        return self.root
 
     def print_tree(self) -> None:
         """Prints the merkle tree"""

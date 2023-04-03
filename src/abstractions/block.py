@@ -39,7 +39,7 @@ class Block:
         self.merkle_tree = self.create_merkle_tree()
         self.height = height
         if merkle_root is None:
-            self.merkle_root = self.merkle_tree.get_root()['hash']
+            self.merkle_root = self.merkle_tree.get_root()['root'] 
         else:
             self.merkle_root = merkle_root
         self.main_chain = main_chain  # if False, block is in a forked branch
@@ -98,7 +98,7 @@ class Block:
         """
         hashes = []
         for t in self.transactions:
-            hashes.append(t)
+            hashes.append(t) #! removed .hash
         m = MerkleTree(hashes)
         return m
 

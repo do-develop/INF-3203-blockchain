@@ -18,9 +18,7 @@ from server import BLOCK_PROPOSAL, GET_USERS, GET_BLOCKCHAIN, REQUEST_TXS, SELF
 # TODO: Implement Proof of Work
 def proof_of_work(prev_hash:str, timestamp:float, mk_root:str, difficulty:int):
     nonce:int = 0
-    #diffy:str = '0' * difficulty
     hash = double_hash(prev_hash + str(timestamp) + mk_root + str(nonce))
-    #while (hash[:difficulty] is not diffy):
     while (get_difficulty_from_hash(hash) < difficulty):
         nonce += 1
         hash = double_hash(prev_hash + str(timestamp) + mk_root + str(nonce))
@@ -30,10 +28,11 @@ def proof_of_work(prev_hash:str, timestamp:float, mk_root:str, difficulty:int):
 def mine_block() -> Block:
     diff = get_my_difficulty()
     #diff = 2 # testing purpose only
-    last_node = get_last_block()
+    last_node = get_last_block_from_longest_chain()
     txs = get_transactions()
-    mkroot = MerkleTree(txs).get_root()
+    mkroot = MerkleTree(txs).get_root().hash
     me = get_my_user_obj()
+
     # start proof of work
     start = time.time()
     print('start mining', start)
@@ -49,18 +48,6 @@ def mine_block() -> Block:
                       True, False, mkroot, [], SELF, sign)
     return new_block
 
-def build_block():
-    # get a mined block
-    new_block = mine_block()
-    # chain the blocks together
-    '''
-    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-    _, blockchain, code = flask_call('GET', GET_BLOCKCHAIN)
-    if blockchain and code == 200:
-        b_chain = Blockchain.load_json(json.dumps(blockchain))
-        if b_chain.is_chain_valid():
-            b_chain.add_block(new_block)
-    '''
 
 def get_signature(hash:str) -> str:
     with open("..//vis//users//do-develop_pvk.pem", 'r') as f:
@@ -92,26 +79,59 @@ def get_transaction_hashes(last_node:Block) -> List[str]:
         my_txs.append(tx.hash)
     return my_txs
 
-def resolve_confict():
-    '''
-    https://github.com/AvinashNath2/Block-Chain-Example/blob/master/Block_Chain.py
-    Algorithm to position the block into the longest chain
-    x longest chain refers to the blockchain that has taken the most energy to build
-    x https://learnmeabitcoin.com/technical/longest-chain
-    '''
-    # for each neighbour check the height
-    #   check if it is max_height and chain.is_chain_valid()
-    #       update then track of longest chain
-    # replace the chain if discovered a new, valid chain longer than current
-
-def get_last_block():
+def get_last_block_from_longest_chain():
     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
     _, blockchain, code = flask_call('GET', GET_BLOCKCHAIN)
     if blockchain and code == 200:
         b_chain = Blockchain.load_json(json.dumps(blockchain))
         if b_chain.is_chain_valid():
-            return b_chain.block_list[-1]
-    raise Exception("'Error in flask GET call, get_blockchain'")
+            fork = []
+            bchain = b_chain.block_list
+            # find fork
+            i = 1
+            while i < len(bchain):
+                if not bchain[i].confirmed:
+                    fork.append([bchain[i-1], []]) # [start block, branch list]
+                    idx = i
+                    while idx < len(bchain) and not bchain[idx].confirmed:
+                        fork[-1][1].append(bchain[idx])
+                        idx += 1
+                    i = idx
+                else:
+                    i += 1
+
+            # does any forks have the same fork start?
+            j = len(fork) - 2
+            branches = [fork[j + 1][1]]
+            while fork[j + 1][0] == fork[j][0]:
+                branches.append(fork[j][1])
+                j -= 1
+
+            # get last block of the best effort branch
+            max_effort:float = float('-inf')
+            best_branch:List[Block] = None # branch with the most effort
+            for i in range(len(branches)):
+                effort = get_total_effort(branches[i])
+                if effort > max_effort:
+                    max_effort = effort
+                    best_branch = branches[i]
+                elif effort == max_effort: # same effort between branches
+                    cur_ttime = get_total_creation_time(branches[i])
+                    pre_ttime = get_total_creation_time(best_branch)
+                    if cur_ttime > pre_ttime: best_branch = branches[i]
+            return best_branch[-1]
+        raise("Invalid chain")
+    raise("GET_BLOCKCHAIN error")
+
+
+# def get_last_block():
+#     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+#     _, blockchain, code = flask_call('GET', GET_BLOCKCHAIN)
+#     if blockchain and code == 200:
+#         b_chain = Blockchain.load_json(json.dumps(blockchain))
+#         if b_chain.is_chain_valid():
+#             return b_chain.block_list[-1]
+#     raise Exception("'Error in flask GET call, get_blockchain'")
 
 def get_my_user_obj() -> User:
     _, users, code = flask_call('GET', GET_USERS)
@@ -143,30 +163,80 @@ def get_my_difficulty() -> int:
     return my_diff
 
 
+def get_total_creation_time(blocks: List[Block]):
+    ttime = 0
+    for block in blocks:
+        ttime += calculate_chainwork(block.creation_time)
+    return ttime
+
+def get_total_effort(blocks: List[Block]):
+    effort = 0
+    for block in blocks:
+        effort += calculate_chainwork(block.hash)
+    return effort
+
+def calculate_chainwork(hash):
+    diff = get_difficulty_from_hash(hash)
+    target = int(("0" * diff + "f" * (64 - diff)), 16)
+    return (2 ** 256) / target
+
 #############################################################################
 # UNIT TEST #
 #############################################################################
 if __name__ == "__main__":
+
+    # TEST - MerkleTree
+    # if b_chain.is_chain_valid():
+    #     last_node = b_chain.block_list[-1]
+    #     llast_node = b_chain.block_list[-2]
+    #     # last_node.transactions
+    #     last_mkroot = last_node.merkle_root
+    #     my_txs = get_transaction_hashes(last_node)
+    #     my_mkroot = MerkleTree(my_txs).get_root().hash
+    #     print('previous mk root: ', last_mkroot)
+    #     print('constructed mk root: ', my_mkroot)
+    
+    # TEST - GET LAST NODE OF THE LONGEST CHAIN
     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-    response, blockchain, code = flask_call('GET', GET_BLOCKCHAIN)
-    b_chain = Blockchain.load_json(json.dumps(blockchain))
-    # for b in b_chain.chain:
-    #     print(b)
- 
-    if b_chain.is_chain_valid():
-        last_node = b_chain.block_list[-1]
-        llast_node = b_chain.block_list[-2]
-        # last_node.transactions
-        last_mkroot = last_node.merkle_root
-        my_txs = last_node.transactions
-        my_mkroot = MerkleTree(my_txs).get_root()
-        print('previous mk root: ', last_mkroot)
-        print('constructed mk root: ', my_mkroot)
-    
+    _, blockchain, code = flask_call('GET', GET_BLOCKCHAIN)
+    if blockchain and code == 200:
+        b_chain = Blockchain.load_json(json.dumps(blockchain))
+        if b_chain.is_chain_valid():
+            fork = []
+            bchain = b_chain.block_list
+            # find fork
+            i = 1
+            while i < len(bchain):
+                if not bchain[i].confirmed:
+                    fork.append([bchain[i-1], []]) # [start block, branch list]
+                    idx = i
+                    while idx < len(bchain) and not bchain[idx].confirmed:
+                        fork[-1][1].append(bchain[idx])
+                        idx += 1
+                    i = idx
+                else:
+                    i += 1
 
+             # does any forks have the same fork start?
+            j = len(fork) - 2
+            branches = [fork[j + 1][1]]
+            while fork[j + 1][0] == fork[j][0]:
+                branches.append(fork[j][1])
+                j -= 1
+            print(len(branches))
 
- 
-    
-
+            # get last block of the best effort branch
+            max_effort:float = float('-inf')
+            best_branch:List[Block] = None # branch with the most effort
+            for i in range(len(branches)):
+                effort = get_total_effort(branches[i])
+                if effort > max_effort:
+                    max_effort = effort
+                    best_branch = branches[i]
+                elif effort == max_effort: # same effort between branches
+                    cur_ttime = get_total_creation_time(branches[i])
+                    pre_ttime = get_total_creation_time(best_branch)
+                    if cur_ttime > pre_ttime: best_branch = branches[i]
+            print(best_branch[-1].height)
 
     
