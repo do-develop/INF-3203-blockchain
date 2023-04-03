@@ -51,7 +51,7 @@ def main(argv):
                 msg, data, code = flask_call('POST', BLOCK_PROPOSAL, data=block_serialized)
                 
                 print(msg)
-                print(data)
+                #print(data)
                 valid_args = True
             if opt == "-i":
                 # INFO
@@ -87,8 +87,8 @@ def main(argv):
                     if blockchain and code == 200:
                         b_chain = Blockchain.load_json(json.dumps(blockchain))
                         # saves the blockchain as pdf in "vis/blockchain/blockchain.pdf"
-                        visualize_blockchain(b_chain.block_list, n_blocks=40)
-                        visualize_blockchain_terminal(b_chain.block_list, n_blocks=40)
+                        # visualize_blockchain(b_chain.block_list, n_blocks=40)
+                        visualize_blockchain_terminal(b_chain.block_list, n_blocks=150)
                     valid_args = True
             if opt == "-d":
                 response, table, code = flask_call('GET', REQUEST_DIFFICULTY)

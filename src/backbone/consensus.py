@@ -116,9 +116,9 @@ def get_last_block_from_longest_chain():
                     max_effort = effort
                     best_branch = branches[i]
                 elif effort == max_effort: # same effort between branches
-                    cur_ttime = get_total_creation_time(branches[i])
-                    pre_ttime = get_total_creation_time(best_branch)
-                    if cur_ttime > pre_ttime: best_branch = branches[i]
+                    cur_height = branches[i][-1].height
+                    pre_height = best_branch[-1].height
+                    if cur_height > pre_height: best_branch = branches[i]
             return best_branch[-1]
         raise("Invalid chain")
     raise("GET_BLOCKCHAIN error")
@@ -208,18 +208,26 @@ if __name__ == "__main__":
             i = 1
             while i < len(bchain):
                 if not bchain[i].confirmed:
+                    # if len(bchain[i].next) > 1:
+                    #     print("fork happend! ", i)
                     fork.append([bchain[i-1], []]) # [start block, branch list]
                     idx = i
-                    while idx < len(bchain) and not bchain[idx].confirmed:
+                    while idx < len(bchain) and not bchain[idx].confirmed:                      
                         fork[-1][1].append(bchain[idx])
                         idx += 1
                     i = idx
                 else:
                     i += 1
-
-             # does any forks have the same fork start?
+            
+            for f in fork:
+                print("start_node: ", f[0].height)
+                effort = get_total_effort(f[1])
+                print("effort of brach:", effort)
+                for br in f[1]:
+                    print("     branch: ", br.height)
+            # does any forks have the same fork start?
             j = len(fork) - 2
-            branches = [fork[j + 1][1]]
+            branches = [fork[j + 1][1]] # last few branches to compare
             while fork[j + 1][0] == fork[j][0]:
                 branches.append(fork[j][1])
                 j -= 1
@@ -230,13 +238,15 @@ if __name__ == "__main__":
             best_branch:List[Block] = None # branch with the most effort
             for i in range(len(branches)):
                 effort = get_total_effort(branches[i])
+                #print("effort:", effort)
                 if effort > max_effort:
                     max_effort = effort
                     best_branch = branches[i]
+                    # print(branches[i][-1].height)
                 elif effort == max_effort: # same effort between branches
-                    cur_ttime = get_total_creation_time(branches[i])
-                    pre_ttime = get_total_creation_time(best_branch)
-                    if cur_ttime > pre_ttime: best_branch = branches[i]
+                    cur_height = branches[i][-1].height
+                    pre_height = best_branch[-1].height
+                    if cur_height > pre_height: best_branch = branches[i]
             print(best_branch[-1].height)
 
     
