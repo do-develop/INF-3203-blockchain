@@ -48,19 +48,19 @@ def main(argv):
                 # response, _, _ = flask_call('POST', BLOCK_PROPOSAL, data=None)
                 mined_block = mine_block()
                 block_serialized = mined_block.to_dict()
-                msg, data, code = flask_call('POST', BLOCK_PROPOSAL, data=block_serialized)
-                
-                print(msg)
+                msg, _, code = flask_call('POST', BLOCK_PROPOSAL, data=block_serialized)
+                if code == 200:
+                    print(msg)
                 #print(data)
                 valid_args = True
             if opt == "-i":
                 # INFO
                 if arg == "b":
                     response, blockchain, code = flask_call('GET', GET_BLOCKCHAIN)
-                    # if blockchain and code == 200:
+                    if blockchain and code == 200:
                     #     b_chain = Blockchain.load_json(json.dumps(blockchain))
                     #     visualize_blockchain_terminal(b_chain.block_list, n_blocks=40)
-                    print(response)
+                        print(response)
                     valid_args = True
                 elif arg == "u":
                     response, _ , _ = flask_call('GET', GET_USERS)

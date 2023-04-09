@@ -12,10 +12,9 @@ class Node:
         self.left = left
         self.right = right
         self.hash = hash
-        # self.hash = cryptographic.hash_function(data)
     
 class MerkleTree:
-    def __init__(self, txs): # txs is list of hash (block.py line 102)
+    def __init__(self, txs): # txs is list of transactions (changed block.py line 102)
         self.data = None
         self.leaf_nodes = []
         for tx in txs:
@@ -53,16 +52,6 @@ class MerkleTree:
         self.__print_tree_recursive(node.left)
         self.__print_tree_recursive(node.right)
 
-#############################################################################
-# UNIT TEST #
-#############################################################################
-if __name__ == "__main__":
-    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-    _, txs, code = flask_call('GET', 'request_txs')
-    if txs and code == 200:
-        hashes = [tx['hash'] for tx in txs]
-        mt = MerkleTree(hashes)
-        print(mt.get_root())
 
     
 
